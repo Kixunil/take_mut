@@ -6,6 +6,8 @@
 //!
 //! Contrast with `std::mem::replace()`, which allows for putting a different `T` into a `&mut T`, but requiring the new `T` to be available before being able to consume the old `T`.
 
+extern crate unreachable;
+
 mod exit_on_panic;
 
 use exit_on_panic::exit_on_panic;
@@ -35,6 +37,42 @@ pub fn take<T, F>(mut_ref: &mut T, closure: F)
             let old_t = ptr::read(mut_ref);
             let new_t = closure(old_t);
             ptr::write(mut_ref, new_t);
+        }
+    });
+}
+
+/// Represents an invalid value that is safe to drop
+pub trait Sentinel: Sized {
+    /// Creates the sentinel.
+    fn new_sentinel() -> Self;
+
+    /// Releases the sentinel. Calling this indicates that nothing unexpected happened.
+    /// The caller must make sure that the value this function is called with is the exact same
+    /// value the `new_sentinel()` funtion returned.
+    unsafe fn release_sentinel(self);
+}
+
+impl<T> Sentinel for Option<T> {
+    fn new_sentinel() -> Self {
+        None
+    }
+
+    unsafe fn release_sentinel(self) {
+        // This avoids unnecessary check for None
+        use unreachable::UncheckedOptionExt;
+        self.unchecked_unwrap_none();
+    }
+}
+
+pub fn take_no_exit<T, F>(mut_ref: &mut T, closure: F)
+  where T: Sentinel,
+        F: FnOnce(T) -> T {
+    use std::mem::replace;
+    exit_on_panic(|| {
+        unsafe {
+            let old_t = replace(mut_ref, Sentinel::new_sentinel());
+            let new_t = closure(old_t);
+            replace(mut_ref, new_t).release_sentinel();
         }
     });
 }
