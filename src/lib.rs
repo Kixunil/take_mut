@@ -52,7 +52,8 @@ pub trait Sentinel: Sized {
     /// Releases the sentinel. Calling this indicates that nothing unexpected happened.
     /// The caller must make sure that the value this function is called with is the exact same
     /// value the `new_sentinel()` funtion returned.
-    unsafe fn release_sentinel(self);
+    unsafe fn release_sentinel(self) {
+    }
 }
 
 impl<T> Sentinel for Option<T> {
