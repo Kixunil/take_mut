@@ -73,13 +73,11 @@ pub fn take_no_exit<T, F>(mut_ref: &mut T, closure: F)
   where T: Sentinel,
         F: FnOnce(T) -> T {
     use std::mem::replace;
-    exit_on_panic(|| {
-        unsafe {
-            let old_t = replace(mut_ref, Sentinel::new_sentinel());
-            let new_t = closure(old_t);
-            replace(mut_ref, new_t).release_sentinel();
-        }
-    });
+    unsafe {
+        let old_t = replace(mut_ref, Sentinel::new_sentinel());
+        let new_t = closure(old_t);
+        replace(mut_ref, new_t).release_sentinel();
+    }
 }
 
 
